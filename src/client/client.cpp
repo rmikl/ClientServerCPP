@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <errno.h>
 
 
 
@@ -18,8 +19,6 @@ void error(const char *msg)
 int main(int argc, char *argv[])
 {
     int socketFileDescriptor;
-
-
 
     socketFileDescriptor = socket(AF_INET, SOCK_STREAM, 0);
     int portnumber;
@@ -46,27 +45,60 @@ int main(int argc, char *argv[])
     _connect = connect(socketFileDescriptor, (struct sockaddr*) &serverAddress, sizeof(serverAddress));
 
     if(_connect < 0) error("error connecting");
-
-    printf("enter the message:\n");
-
     char buff[256];
-    bzero(buff,256);
+    ssize_t bytes_read, bytes_written;
+    bzero(buff,255);
 
-    fgets(buff,256,stdin);
 
-    int n;
 
-    n = write(socketFileDescriptor,buff, strlen(buff));
 
-    if(n<0) error("error writing to socket");
+    for( ; ; )
+    {
+        printf("Client: ");
+        bzero(buff,255);
+        fgets(buff, sizeof(buff), stdin);
 
-    bzero(buff,256);
+        int exit = strncmp("exit", buff, 4);
+        int fileTransfer = strncmp("transfer", buff, 8);
+        if(exit == 0)
+        {
+            break;
+        }
 
-    n = read(socketFileDescriptor,buff,255);
+        if(fileTransfer == 0)
+        {
+            printf("sending file...\n");
+        }
 
-    if(n<0) error("error reading from socket");
+        bytes_written = write(socketFileDescriptor, buff, sizeof(buff));
+        if(bytes_written == 0)
+        {
+            printf("WRITE(0) error ---> %s.\n", strerror(errno));
+            printf("Nothing was written.\n");
+            break;
+        }
 
-    printf("%s\n", buff);
+        memset(buff, 0, sizeof(buff));
+        bytes_read = read(socketFileDescriptor, buff, sizeof(buff));
+
+        if(bytes_read < 0)
+        {
+            printf("Error reading message from \n");
+            printf("READ(c) error ---> %s.\n", strerror(errno));
+            break;
+        }
+
+        //Test to see if the buffer is blank.
+        if(bytes_read == 0)
+        {
+            printf("READ(0) error ---> %s.\n", strerror(errno));
+            break;
+        }
+
+        fprintf(stdout, "Server: %s", buff);
+
+}
+
 
     close(socketFileDescriptor);
 

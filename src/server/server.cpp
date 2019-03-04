@@ -7,14 +7,13 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <errno.h>
 
 void error(const char *msg)
 {
     perror(msg);
     exit(1);
 }
-
-
 
 
 int main(int argc, char *argv[])
@@ -70,21 +69,58 @@ int main(int argc, char *argv[])
 
     if(newSocketFileDescriptor < 0) error("error on accepting");
 
-    printf("server: got connection from %s port %d\n",
-            inet_ntoa(clientAddress.sin_addr), ntohs(clientAddress.sin_port));
-
-    send(newSocketFileDescriptor, "Hello, world!\n", 13, 0);
+    printf("server: got connection from %s port %d\n", inet_ntoa(clientAddress.sin_addr), ntohs(clientAddress.sin_port));
 
 
-    int n;
     char buff[256];
-    bzero(buff,256);
+    ssize_t bytes_read, bytes_written;
 
-    n = read(newSocketFileDescriptor,buff, 255);
 
-    if(n <0) error("error readng from socket");
+    for( ; ; )
+    {
+        bytes_read = read(newSocketFileDescriptor, buff, sizeof(buff));
 
-    printf("Here is the message: %s\n",buff);
+        int exit = strncmp("exit", buff,4);
+        int fileTransfer = strncmp("transfer", buff, 8);
+        if(exit == 0)
+        {
+            break;
+        }
+
+        if(fileTransfer == 0)
+        {
+            printf("sending file...\n");
+        }
+        if(bytes_read < 0)
+        {
+            printf("READ(-1) error ---> %s.\n", strerror(errno));
+            break;
+        }
+
+        if(bytes_read == 0)
+        {
+            printf("READ(0) error ---> %s.\n", strerror(errno));
+            break;
+        }
+
+        fprintf(stdout, "Client: %s", buff);
+
+        printf("Server: ");
+        bzero(buff,255);
+        fgets(buff, sizeof(buff), stdin);
+
+        bytes_written = write(newSocketFileDescriptor, buff, sizeof(buff));
+
+        if(bytes_written < 0)
+        {
+            printf("WRITE(-1) error ---> %s.\n", strerror(errno));
+            break;
+        }
+    }
+
+
+
+
 
     close(newSocketFileDescriptor);
 
