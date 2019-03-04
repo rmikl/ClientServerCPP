@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <errno.h>
+#include <ctype.h>
 
 
 
@@ -18,48 +19,51 @@ void error(const char *msg)
 
 int main(int argc, char *argv[])
 {
+
+
+
     int socketFileDescriptor;
-
     socketFileDescriptor = socket(AF_INET, SOCK_STREAM, 0);
+
     int portnumber;
-
     portnumber = atoi(argv[2]);
-
     struct hostent *hostname;
-
     hostname = gethostbyname(argv[1]);
-
     if(hostname == NULL) error("no such host");
+
 
     struct sockaddr_in serverAddress;
     bzero((char*) &serverAddress, sizeof(serverAddress));
 
     serverAddress.sin_family = AF_INET;
-
     bcopy((char*)hostname->h_addr, (char*)&serverAddress.sin_addr.s_addr, hostname->h_length);
-
     serverAddress.sin_port = htons(portnumber);
 
-    int _connect;
 
+
+    int _connect;
     _connect = connect(socketFileDescriptor, (struct sockaddr*) &serverAddress, sizeof(serverAddress));
 
     if(_connect < 0) error("error connecting");
-    char buff[256];
+    char buff[256], filebuff[256];
     ssize_t bytes_read, bytes_written;
     bzero(buff,255);
 
-
-
+//file handling variables
+    FILE *f;
+    int words=0;
+    char c,ch;
 
     for( ; ; )
     {
         printf("Client: ");
-        bzero(buff,255);
+        bzero(buff,256);
         fgets(buff, sizeof(buff), stdin);
-
+        char tmp[256];
+        strcpy(tmp,buff);
         int exit = strncmp("exit", buff, 4);
         int fileTransfer = strncmp("transfer", buff, 8);
+        bytes_written = write(socketFileDescriptor, buff, sizeof(buff));
         if(exit == 0)
         {
             break;
@@ -67,10 +71,37 @@ int main(int argc, char *argv[])
 
         if(fileTransfer == 0)
         {
-            printf("sending file...\n");
-        }
+            char tmp[256];
+            strcpy(tmp,buff);
+            f = fopen("/root/file","r");
+            printf("file opening...\n");
+            while((c = getc(f)) != EOF)
+            {
+                fscanf(f,"%s", filebuff);
+                if(isspace(c) ||  c == '\t')
+                    words = words + 1;
+            }
+            printf("word counting...\n");
 
-        bytes_written = write(socketFileDescriptor, buff, sizeof(buff));
+            write(socketFileDescriptor,&words, sizeof(int));
+            printf("wirte to buffer...\n");
+            rewind(f);
+
+            while(ch != EOF){
+                fscanf(f, "%s", filebuff);
+                printf("what is inside a file: %s\n", filebuff);
+                printf("ch : %c\n",ch);
+                write(socketFileDescriptor,filebuff,256);
+                ch = fgetc(f);
+            }
+
+
+            printf("sending file...\n");
+
+        }
+        strcpy(buff,tmp);
+
+
         if(bytes_written == 0)
         {
             printf("WRITE(0) error ---> %s.\n", strerror(errno));
@@ -80,6 +111,7 @@ int main(int argc, char *argv[])
 
         memset(buff, 0, sizeof(buff));
         bytes_read = read(socketFileDescriptor, buff, sizeof(buff));
+
 
         if(bytes_read < 0)
         {

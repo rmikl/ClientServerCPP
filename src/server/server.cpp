@@ -76,10 +76,17 @@ int main(int argc, char *argv[])
     ssize_t bytes_read, bytes_written;
 
 
+    //file handling vars
+    FILE *fp;
+    int ch = 0;
+    int words;
+    char filebuff[256];
+
+
     for( ; ; )
     {
         bytes_read = read(newSocketFileDescriptor, buff, sizeof(buff));
-
+        printf("bufer: %s",buff);
         int exit = strncmp("exit", buff,4);
         int fileTransfer = strncmp("transfer", buff, 8);
         if(exit == 0)
@@ -89,7 +96,23 @@ int main(int argc, char *argv[])
 
         if(fileTransfer == 0)
         {
-            printf("sending file...\n");
+            fp = fopen("/root/recievedFile","a");
+            printf("file opening...\n");
+
+            read(newSocketFileDescriptor,&words, sizeof(int));
+            printf("word counting...\n");
+            printf("words : %d\n",words);
+
+            while (ch != words)
+            {
+                int _read = read(newSocketFileDescriptor, filebuff, 256);
+                fprintf(fp,"%s ", filebuff);
+                ch = ch +1;
+                printf("inside while loop....................\n");
+            }
+            bzero(filebuff,256);
+
+            printf("recieving file...\n");
         }
         if(bytes_read < 0)
         {
@@ -106,7 +129,7 @@ int main(int argc, char *argv[])
         fprintf(stdout, "Client: %s", buff);
 
         printf("Server: ");
-        bzero(buff,255);
+        bzero(buff,256);
         fgets(buff, sizeof(buff), stdin);
 
         bytes_written = write(newSocketFileDescriptor, buff, sizeof(buff));
@@ -117,24 +140,10 @@ int main(int argc, char *argv[])
             break;
         }
     }
-
-
-
-
-
     close(newSocketFileDescriptor);
 
     close(socketFileDescriptor);
 
     return 0;
 
-
-
-
-
-    //do smth with this
-
-
-
-    return 0;
 }
