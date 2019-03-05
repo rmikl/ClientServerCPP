@@ -19,11 +19,9 @@ void error(const char *msg)
 
 int main(int argc, char *argv[])
 {
-
-
-
     int socketFileDescriptor;
     socketFileDescriptor = socket(AF_INET, SOCK_STREAM, 0);
+
 
     int portnumber;
     portnumber = atoi(argv[2]);
@@ -58,6 +56,7 @@ int main(int argc, char *argv[])
     {
         printf("Client: ");
         bzero(buff,256);
+        fseek(stdin,0,SEEK_END);
         fgets(buff, sizeof(buff), stdin);
         char tmp[256];
         strcpy(tmp,buff);
@@ -78,8 +77,10 @@ int main(int argc, char *argv[])
             while((c = getc(f)) != EOF)
             {
                 fscanf(f,"%s", filebuff);
+                printf("filebuf : %s\n",filebuff);
                 if(isspace(c) ||  c == '\t')
                     words = words + 1;
+
             }
             printf("word counting...\n");
 
@@ -87,17 +88,27 @@ int main(int argc, char *argv[])
             printf("wirte to buffer...\n");
             rewind(f);
 
-            while(ch != EOF){
-                fscanf(f, "%s", filebuff);
+            while(fscanf(f, "%s", filebuff) == 1)
+            {
+             //   fscanf(f, "%s", filebuff);
                 printf("what is inside a file: %s\n", filebuff);
-                printf("ch : %c\n",ch);
+                //printf("ch : %c\n",ch);
                 write(socketFileDescriptor,filebuff,256);
-                ch = fgetc(f);
+             //   ch = fgetc(f);
+             //   while(isspace(c) || ch == '\t' || ch == '\n' || ) ch = fgetc(f);
             }
 
 
-            printf("sending file...\n");
 
+
+
+
+
+
+
+
+            printf("sending file...\n");
+            fclose(f);
         }
         strcpy(buff,tmp);
 
