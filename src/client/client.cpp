@@ -8,6 +8,7 @@
 #include <netdb.h>
 #include <errno.h>
 #include <ctype.h>
+#define BUFFER_SIZE 256
 
 
 
@@ -21,6 +22,10 @@ int createSocket();
 int createSockaddr(struct sockaddr_in*,struct hostent*, int);
 int bindSocketToPort(int, struct sockaddr_in*);
 int establishConnection(int, struct sockaddr_in*);
+
+ssize_t sendFile(int );
+FILE* createFile(const char* );
+
 
 
 int main(int argc, char *argv[])
@@ -49,22 +54,18 @@ int main(int argc, char *argv[])
     if(_connect < 0) error("error connecting");
 
 
-    char buff[256], filebuff[256];
+    char buff[BUFFER_SIZE], filebuff[BUFFER_SIZE];
     ssize_t bytes_read, bytes_written;
-    bzero(buff,255);
+    bzero(buff,BUFFER_SIZE);
 
-//file handling variables
-    FILE *f;
-    int words=0;
-    char c,ch;
-
+    char ch;
     while(1)
     {
         printf("Client: ");
-        bzero(buff,256);
+        bzero(buff,BUFFER_SIZE);
         fseek(stdin,0,SEEK_END);
         fgets(buff, sizeof(buff), stdin);
-        char tmp[256];
+        char tmp[BUFFER_SIZE];
         strcpy(tmp,buff);
         int exit = strncmp("exit", buff, 4);
         int fileTransfer = strncmp("transfer", buff, 8);
@@ -76,51 +77,16 @@ int main(int argc, char *argv[])
 
         if(fileTransfer == 0)
         {
-            char tmp[256];
-            strcpy(tmp,buff);
-            f = fopen("/root/file","r");
-            printf("file opening...\n");
-            while((c = getc(f)) != EOF)
-            {
-                fscanf(f,"%s", filebuff);
-                printf("filebuf : %s\n",filebuff);
-                if(isspace(c) ||  c == '\t')
-                    words = words + 1;
-
-            }
-            printf("word counting...\n");
-
-            write(socketFileDescriptor,&words, sizeof(int));
-            printf("wirte to buffer...\n");
-            rewind(f);
-
-            while(fscanf(f, "%s", filebuff) == 1)
-            {
-             //   fscanf(f, "%s", filebuff);
-                printf("what is inside a file: %s\n", filebuff);
-                //printf("ch : %c\n",ch);
-                write(socketFileDescriptor,filebuff,256);
-             //   ch = fgetc(f);
-             //   while(isspace(c) || ch == '\t' || ch == '\n' || ) ch = fgetc(f);
-            }
-
-            printf("sending file...\n");
-            fclose(f);
+            bytes_written = sendFile(socketFileDescriptor);
         }
-        strcpy(buff,tmp);
-
-
         if(bytes_written == 0)
         {
             printf("WRITE(0) error ---> %s.\n", strerror(errno));
             printf("Nothing was written.\n");
             break;
         }
-
         memset(buff, 0, sizeof(buff));
         bytes_read = read(socketFileDescriptor, buff, sizeof(buff));
-
-
         if(bytes_read < 0)
         {
             printf("Error reading message from \n");
@@ -136,16 +102,10 @@ int main(int argc, char *argv[])
         }
 
         fprintf(stdout, "Server: %s", buff);
-
-}
-
-
+    }
     close(socketFileDescriptor);
 
     return 0;
-
-
-
 
 }
 
@@ -168,11 +128,41 @@ int bindSocketToPort(struct sockaddr_in* addr, int sockfd)
     return _bind;
 }
 
-
 int establishConnection(int socketFileDescriptor, struct sockaddr_in* serverAddress)
 {
     int _connect = connect(socketFileDescriptor, (struct sockaddr*) serverAddress, sizeof(sockaddr_in));
     return _connect;
 }
 
+ssize_t sendFile(int socketFileDescriptor)
+{
+    ssize_t bytes_write;
+    char c;
+    int words = 0;
+    char message[BUFFER_SIZE];
+    FILE* f = createFile("file");
+    while((c = getc(f)) != EOF)
+    {
+        fscanf(f,"%s", message);
+        if(isspace(c) ||  c == '\t')
+        words = words + 1;
 
+    }
+    write(socketFileDescriptor,&words, sizeof(int));
+    rewind(f);
+    while(fscanf(f, "%s", message) == 1)
+    {
+        ssize_t bytes_write = write(socketFileDescriptor,message,256);
+    }
+    fclose(f);
+    return bytes_write;
+}
+
+FILE* createFile(const char* fileName)
+{
+    char path[BUFFER_SIZE];
+    bzero(path,BUFFER_SIZE);
+    strcat(path, "/root/");
+    strcat(path, fileName);
+    return fopen(path,"r");
+}
