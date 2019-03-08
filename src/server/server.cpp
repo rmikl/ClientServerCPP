@@ -1,4 +1,4 @@
-//includes here
+    //includes here
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,12 +30,6 @@ ssize_t recieveFile(int);
 
 FILE* createFile(const char*);
 int getWordCount(int, int*);
-
-
-void sendMessage();
-void waitForReply();
-void closeConnection();
-
 
 
 int main(int argc, char *argv[])
@@ -171,7 +165,6 @@ ssize_t recieveFile(int newSocketFileDescriptor)
     }
 
     bzero(filebuff,BUFFER_SIZE);
-
     fclose(fileHanlder);
     return bytes_read;
 }

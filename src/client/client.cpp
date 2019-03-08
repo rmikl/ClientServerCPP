@@ -17,14 +17,22 @@ void error(const char *msg)
     exit(1);
 }
 
+int createSocket();
+int createSockaddr(struct sockaddr_in*,struct hostent*, int);
+int bindSocketToPort(int, struct sockaddr_in*);
+int establishConnection(int, struct sockaddr_in*);
+
+
 int main(int argc, char *argv[])
 {
-    int socketFileDescriptor;
-    socketFileDescriptor = socket(AF_INET, SOCK_STREAM, 0);
+
+    int socketFileDescriptor = createSocket();
 
 
     int portnumber;
     portnumber = atoi(argv[2]);
+
+
     struct hostent *hostname;
     hostname = gethostbyname(argv[1]);
     if(hostname == NULL) error("no such host");
@@ -32,17 +40,15 @@ int main(int argc, char *argv[])
 
     struct sockaddr_in serverAddress;
     bzero((char*) &serverAddress, sizeof(serverAddress));
-
-    serverAddress.sin_family = AF_INET;
-    bcopy((char*)hostname->h_addr, (char*)&serverAddress.sin_addr.s_addr, hostname->h_length);
-    serverAddress.sin_port = htons(portnumber);
-
+    createSockaddr(&serverAddress,hostname,portnumber);
 
 
     int _connect;
-    _connect = connect(socketFileDescriptor, (struct sockaddr*) &serverAddress, sizeof(serverAddress));
 
+    _connect = establishConnection(socketFileDescriptor, &serverAddress);
     if(_connect < 0) error("error connecting");
+
+
     char buff[256], filebuff[256];
     ssize_t bytes_read, bytes_written;
     bzero(buff,255);
@@ -52,7 +58,7 @@ int main(int argc, char *argv[])
     int words=0;
     char c,ch;
 
-    for( ; ; )
+    while(1)
     {
         printf("Client: ");
         bzero(buff,256);
@@ -98,15 +104,6 @@ int main(int argc, char *argv[])
              //   while(isspace(c) || ch == '\t' || ch == '\n' || ) ch = fgetc(f);
             }
 
-
-
-
-
-
-
-
-
-
             printf("sending file...\n");
             fclose(f);
         }
@@ -151,3 +148,31 @@ int main(int argc, char *argv[])
 
 
 }
+
+int createSocket()
+{
+    return socket(AF_INET, SOCK_STREAM, 0);
+}
+
+int createSockaddr(struct sockaddr_in* serverAddress, struct hostent* hostname, int portNumber)
+{
+    bcopy((char*)hostname->h_addr, (char*)&serverAddress->sin_addr.s_addr, hostname->h_length);
+    serverAddress->sin_family = AF_INET;
+    serverAddress->sin_port = htons(portNumber);
+    return portNumber;
+}
+
+int bindSocketToPort(struct sockaddr_in* addr, int sockfd)
+{
+    int _bind = bind(sockfd, (struct sockaddr*) addr, sizeof(addr));
+    return _bind;
+}
+
+
+int establishConnection(int socketFileDescriptor, struct sockaddr_in* serverAddress)
+{
+    int _connect = connect(socketFileDescriptor, (struct sockaddr*) serverAddress, sizeof(sockaddr_in));
+    return _connect;
+}
+
+
